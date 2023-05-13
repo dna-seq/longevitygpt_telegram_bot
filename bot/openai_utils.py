@@ -185,6 +185,15 @@ async def transcribe_audio(audio_file):
     return r["text"]
 
 
+async def query_langchain(message, dialog_messages=[]):
+    answer = "CALL TO LANGCHAIN HERE"
+	##TODO
+    n_input_tokens=0
+    n_output_tokens=0
+    n_first_dialog_messages_removed=0
+    return answer, (n_input_tokens, n_output_tokens), n_first_dialog_messages_removed
+
+
 async def generate_images(prompt, n_images=4):
     r = await openai.Image.acreate(prompt=prompt, n=n_images, size="512x512")
     image_urls = [item.url for item in r.data]

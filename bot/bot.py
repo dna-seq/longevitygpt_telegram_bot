@@ -233,9 +233,16 @@ async def message_handle(update: Update, context: CallbackContext, message=None,
                 "html": ParseMode.HTML,
                 "markdown": ParseMode.MARKDOWN
             }[config.chat_modes[chat_mode]["parse_mode"]]
-
             chatgpt_instance = openai_utils.ChatGPT(model=current_model)
-            if config.enable_message_streaming:
+            async def fake_gen():
+                    yield "finished", answer, (n_input_tokens, n_output_tokens), n_first_dialog_messages_removed
+            if chat_mode == "longevity_assistant":
+                answer, (n_input_tokens, n_output_tokens), n_first_dialog_messages_removed = await openai_utils.query_langchain(
+                    _message,
+                    dialog_messages=dialog_messages,
+                )
+                gen = fake_gen()
+            elif config.enable_message_streaming:
                 gen = chatgpt_instance.send_message_stream(_message, dialog_messages=dialog_messages, chat_mode=chat_mode)
             else:
                 answer, (n_input_tokens, n_output_tokens), n_first_dialog_messages_removed = await chatgpt_instance.send_message(
@@ -243,10 +250,6 @@ async def message_handle(update: Update, context: CallbackContext, message=None,
                     dialog_messages=dialog_messages,
                     chat_mode=chat_mode
                 )
-
-                async def fake_gen():
-                    yield "finished", answer, (n_input_tokens, n_output_tokens), n_first_dialog_messages_removed
-
                 gen = fake_gen()
 
             prev_answer = ""
@@ -367,6 +370,24 @@ async def voice_message_handle(update: Update, context: CallbackContext):
 
     await message_handle(update, context, message=transcribed_text)
 
+async def get_langchain_update(update: Update, context: CallbackContext, message=None):
+    await register_user_if_not_exists(update, context, update.message.from_user)
+    if await is_previous_message_not_answered_yet(update, context): return
+
+    user_id = update.message.from_user.id
+    db.set_user_attribute(user_id, "last_interaction", datetime.now())
+   
+    try:
+        answer = await openai_utils.query_langchain(message)
+        await update.message.reply_text(answer)
+        return
+    except Exception as e:
+        error_text = f"Something went wrong during completion. Reason: {e}"
+        logger.error(error_text)
+        await update.message.reply_text(error_text)
+        return
+
+# token usage
 
 async def generate_image_handle(update: Update, context: CallbackContext, message=None):
     await register_user_if_not_exists(update, context, update.message.from_user)

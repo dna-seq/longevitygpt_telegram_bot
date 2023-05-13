@@ -29,8 +29,8 @@ info:
 
   text-davinci-003:
     type: completion
-    name: GPT-3.5
-    description: GPT-3.5 is a legacy model. Actually there is <b>no reason to use it</b>, because it is more expensive and slower than ChatGPT, but just about as smart.
+    name: davinci-003
+    description: davinci-003 is a legacy model. Actually there is <b>no reason to use it</b>, because it is more expensive and slower than ChatGPT, but just about as smart.
 
     price_per_1000_input_tokens: 0.02
     price_per_1000_output_tokens: 0.02
