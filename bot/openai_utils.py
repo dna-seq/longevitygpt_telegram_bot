@@ -2,6 +2,10 @@ import config
 
 import tiktoken
 import openai
+import aiohttp
+import asyncio
+import json
+
 openai.api_key = config.openai_api_key
 
 
@@ -186,12 +190,32 @@ async def transcribe_audio(audio_file):
 
 
 async def query_langchain(message, dialog_messages=[]):
-    answer = "CALL TO LANGCHAIN HERE"
-	##TODO
-    n_input_tokens=0
-    n_output_tokens=0
-    n_first_dialog_messages_removed=0
-    return answer, (n_input_tokens, n_output_tokens), n_first_dialog_messages_removed
+    url = "http://0.0.0.0:8008/message"
+    timeout = aiohttp.ClientTimeout(total=60)
+    headers = {'Content-Type': 'application/json'}
+    data = {
+        'message': message,
+        'dialog_messages': dialog_messages
+    }
+
+    try:
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.post(url, data=json.dumps(data), headers=headers) as resp:
+                if resp.status == 200:
+                    response = await resp.json()
+                    error = response.get('error', False)
+                    if error:
+                        return f"Error from server: {response.get('answer')}", (0, 0), 0
+                    else:
+                        answer = response.get('answer')
+                        n_input_tokens = response.get('n_input_tokens', 0)
+                        n_output_tokens = response.get('n_output_tokens', 0)
+                        n_first_dialog_messages_removed = response.get('n_first_dialog_messages_removed', 0)
+                        return answer, (n_input_tokens, n_output_tokens), n_first_dialog_messages_removed
+                else:
+                    raise Exception(f"Unexpected response status: {resp.status}")
+    except Exception as e:
+        raise e
 
 
 async def generate_images(prompt, n_images=4):
