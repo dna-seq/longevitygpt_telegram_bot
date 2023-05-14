@@ -5,7 +5,9 @@ import openai
 import aiohttp
 import asyncio
 import json
+import os
 
+host_api_url = os.getenv('HOST_API_URL')
 openai.api_key = config.openai_api_key
 
 
@@ -190,7 +192,7 @@ async def transcribe_audio(audio_file):
 
 
 async def query_langchain(message, dialog_messages=[]):
-    url = "http://0.0.0.0:8008/message"
+    url = host_api_url + "/message"
     timeout = aiohttp.ClientTimeout(total=60)
     headers = {'Content-Type': 'application/json'}
     data = {
