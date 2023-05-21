@@ -2,7 +2,8 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
+.idea
+.idea/
 # C extensions
 *.so
 
@@ -135,3 +136,4 @@ config/config.env
 docker-compose.dev.yml
 
 mongodb/
+config/config.zip

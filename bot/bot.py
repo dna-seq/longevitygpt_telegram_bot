@@ -234,22 +234,29 @@ async def message_handle(update: Update, context: CallbackContext, message=None,
                 "markdown": ParseMode.MARKDOWN
             }[config.chat_modes[chat_mode]["parse_mode"]]
             chatgpt_instance = openai_utils.ChatGPT(model=current_model)
-            async def fake_gen():
-                    yield "finished", answer, (n_input_tokens, n_output_tokens), n_first_dialog_messages_removed
-            if chat_mode == "longevity_assistant":
-                answer, (n_input_tokens, n_output_tokens), n_first_dialog_messages_removed = await openai_utils.query_langchain(
-                    _message,
-                    dialog_messages=dialog_messages,
-                )
-                gen = fake_gen()
-            elif config.enable_message_streaming:
-                gen = chatgpt_instance.send_message_stream(_message, dialog_messages=dialog_messages, chat_mode=chat_mode)
+
+            streaming_map = {
+                "assistant": chatgpt_instance.send_message_stream,
+            }
+
+            oneshot_map = {
+                "assistant": chatgpt_instance.send_message,
+                "longevity_assistant": openai_utils.query_langchain,
+            }
+
+            if config.enable_message_streaming and chat_mode in streaming_map:
+                gen = streaming_map[chat_mode] \
+                    (_message, dialog_messages=dialog_messages, chat_mode=chat_mode)
             else:
-                answer, (n_input_tokens, n_output_tokens), n_first_dialog_messages_removed = await chatgpt_instance.send_message(
-                    _message,
-                    dialog_messages=dialog_messages,
-                    chat_mode=chat_mode
-                )
+                async def fake_gen():
+                    yield "finished", answer, (n_input_tokens, n_output_tokens), n_first_dialog_messages_removed
+
+                answer, (n_input_tokens, n_output_tokens), n_first_dialog_messages_removed = await oneshot_map\
+                    .get(chat_mode, chatgpt_instance.send_message)(
+                        _message,
+                        dialog_messages=dialog_messages,
+                        chat_mode=chat_mode
+                    )
                 gen = fake_gen()
 
             prev_answer = ""
@@ -273,7 +280,6 @@ async def message_handle(update: Update, context: CallbackContext, message=None,
                 await asyncio.sleep(0.01)  # wait a bit to avoid flooding
 
                 prev_answer = answer
-
             # update user data
             new_dialog_message = {"user": _message, "bot": answer, "date": datetime.now()}
             db.set_dialog_messages(
