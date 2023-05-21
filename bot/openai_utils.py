@@ -3,7 +3,6 @@ import config
 import tiktoken
 import openai
 import aiohttp
-import asyncio
 import json
 import os
 
@@ -193,7 +192,7 @@ async def transcribe_audio(audio_file):
 
 async def query_langchain(message, dialog_messages=[]):
     url = host_api_url + "/message"
-    timeout = aiohttp.ClientTimeout(total=60)
+    timeout = aiohttp.ClientTimeout(total=300)
     headers = {'Content-Type': 'application/json'}
     data = {
         'message': message,
